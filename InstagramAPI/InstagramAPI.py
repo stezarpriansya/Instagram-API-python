@@ -25,7 +25,7 @@ try:
     from moviepy.editor import VideoFileClip
 except ImportError:
     print("Fail to import moviepy. Need only for Video upload.")
-    
+
 
 # The urllib library was split into other modules from Python 2 to Python 3
 if sys.version_info.major == 3:
@@ -387,7 +387,7 @@ class InstagramAPI:
             except:
                 pass
             return False
-    
+
     def direct_message(self, text, recipients):
         if type(recipients) != type([]):
             recipients = [str(recipients)]
@@ -429,7 +429,7 @@ class InstagramAPI:
         )
         #self.SendRequest(endpoint,post=data) #overwrites 'Content-type' header and boundary is missed
         response = self.s.post(self.API_URL + endpoint, data=data)
-        
+
         if response.status_code == 200:
             self.LastResponse = response
             self.LastJson = json.loads(response.text)
@@ -443,7 +443,7 @@ class InstagramAPI:
             except:
                 pass
             return False
-        
+
     def direct_share(self, media_id, recipients, text=None):
         if not isinstance(position, list):
             recipients = [str(recipients)]
@@ -979,6 +979,11 @@ class InstagramAPI:
             try:
                 self.LastResponse = response
                 self.LastJson = json.loads(response.text)
+                if self.LastJson['two_factor_required'] == True:
+                    print('Two Factor Authentication Required!')
+                    print('Two Factor Identifier: ',self.LastJson['two_factor_info']['two_factor_identifier'])
+                    print('Finish login with finishTwoFactorAuth(verification_code, two_factor_identifier) !')
+                    return False
                 print(self.LastJson)
                 if 'error_type' in self.LastJson and self.LastJson['error_type'] == 'sentry_block':
                     raise SentryBlockException(self.LastJson['message'])
@@ -987,6 +992,29 @@ class InstagramAPI:
             except:
                 pass
             return False
+
+    def finishTwoFactorAuth(self, verification_code, two_factor_identifier, force=False):
+        if (not self.isLoggedIn or force):
+            # FOR TWO VERIFICATION
+            data = {'_csrftoken': self.LastResponse.cookies['csrftoken'],
+                   'username': self.username,
+                   'guid': self.uuid,
+                   'device_id': self.device_id,
+                   'verification_method': '1',
+                   'verification_code': verification_code,
+                   'two_factor_identifier': two_factor_identifier}
+            if (self.SendRequest('accounts/two_factor_login/', self.generateSignature(json.dumps(data)), True)):
+               self.isLoggedIn = True
+               self.username_id = self.LastJson["logged_in_user"]["pk"]
+               self.rank_token = "%s_%s" % (self.username_id, self.uuid)
+               self.token = self.LastResponse.cookies["csrftoken"]
+               self.syncFeatures()
+               self.autoCompleteUserList()
+               self.timelineFeed()
+               self.getv2Inbox()
+               self.getRecentActivity()
+               print("Login success with two factor authentication!\n")
+               return True
 
     def getTotalFollowers(self, usernameId):
         followers = []
