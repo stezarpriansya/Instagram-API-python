@@ -3,3 +3,5 @@ InstagramApi.egg-info/
 dist/
 *.env
 .ipynb_checkpoints/
+STEZAR_dict.txt
+STEZAR_tala_stopwords.txt
